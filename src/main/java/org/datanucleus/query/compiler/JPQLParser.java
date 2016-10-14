@@ -864,13 +864,34 @@ public class JPQLParser extends AbstractParser
         if (!lexer.parseChar('('))
         {
             // Subquery
-            Node inNode = new Node(NodeType.OPERATOR, not ? "NOT IN" : "IN");
+            Node inNode;
+            //TYPE(p) in :collectionClasses
+            if (inputNode.getNodeType() == NodeType.TYPE)
+            {
+                // Convert TYPE into "instanceof"
+                inputNode = inputNode.getFirstChild();
+                inNode = new Node(NodeType.OPERATOR, "instanceof");
+            }
+            else
+            {
+                inNode = new Node(NodeType.OPERATOR, not ? "NOT IN" : "IN");
+            }
+
             inNode.appendChildNode(inputNode);
 
             // Get variable name that was substituted for the subquery
             processPrimary();
             Node subqueryNode = stack.pop();
             inNode.appendChildNode(subqueryNode);
+
+            //TYPE(p) not in :collectionClasses
+            if(not && inNode.getNodeValue().equals("instanceof"))
+            {
+                Node notNode = new Node(NodeType.OPERATOR, "!");
+                notNode.appendChildNode(inNode);
+                inNode = notNode;
+            }
+
             stack.push(inNode);
             return;
         }
